@@ -107,9 +107,7 @@
         ];
         var cnt = 0;
         var circles = [];
-        var marks = [];
         var df = [];
-        //var poly_m = L.polygon(poly).addTo(mymap);
 
         poly.forEach(f => {
             var cir = L.circle(f, 10, {
@@ -122,9 +120,6 @@
         }
         )
         function add_marks() {
-            marks.forEach(f => {
-                mymap.removeLayer(f);
-            })
             var data= [];
             df.forEach(f => {
                 if (inside(f, poly)) {
@@ -141,7 +136,6 @@
             cnt = cnt % 4;
             if (cnt == 0) {
                 poly = sort_poly(poly);
-                //poly_m.setLatLngs(poly);
                 add_marks();
             }
         }
@@ -155,7 +149,7 @@
 
         function onReaderLoad(event) {
             var data = JSON.parse(event.target.result);
-            df = [];
+            var df = [];
             data["locations"].forEach(f => {
                 var latitudeE7 = f["latitudeE7"];
                 var longitudeE7 = f["longitudeE7"];
