@@ -9,8 +9,7 @@ This is a feature that I miss from the google maps timeline (https://www.google.
 Export your data from Google using the URL
 https://takeout.google.com/takeout/custom/mymaps,local_actions,location_history
 
-Extract the json file from the takeout*.zip file and
-load into the site
+Extract the locations from the location_history.json file located inside the takeout*.zip and load into the site
 
 ![alt text](example_1.png "Logo Title Text 1")
 
