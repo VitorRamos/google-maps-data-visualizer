@@ -10,32 +10,46 @@
         crossorigin="" />
     <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js"
         integrity="sha512-QVftwZFqvtRNi0ZyCtsznlKSWOStnDORoefr1enyq5mVL4tmKB3S/EnC3rRJcxCPavG10IcrVGSmPh6Qw5lwrg=="
-        crossorigin=""></script>
+        crossorigin="">
+    </script>
+    <script src="QuadTree.js"></script>
+    <script src="L.GridLayer.MaskCanvas.js"></script>
     <style>
-        #issMap {
+        #mymap {
             height: 760px;
         }
     </style>
 
-    <title>Fetch JSON from API and map lat lon</title>
+    <title>Personal coverage map</title>
 </head>
 
 <body>
     <h1>Google maps data</h1>
 
     <input id="file" type="file" />
-    <div id="issMap"></div>
+    <button id="reset">reset</button>
+    <div id="mymap"></div>
 
     <script>
         // Making a map and tiles
         // Setting a higher initial zoom to make effect more obvious
-        const mymap = L.map('issMap').setView([0, 0], 6);
+        const mymap = L.map('mymap').setView([0, 0], 3);
         const attribution =
-            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
-
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+        
         const tileUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
         const tiles = L.tileLayer(tileUrl, { attribution });
         tiles.addTo(mymap);
+
+        var layer = new L.GridLayer.MaskCanvas({
+            //opacity: 0.5,
+            radius: 50,
+            useAbsoluteRadius: true,
+            color: '#AA5',
+            noMask: true,  // true results in normal (filled) circled, instead masked circles
+            //lineColor: '#A00'   // color of the circle outline if noMask is true
+        });
+        mymap.addLayer(layer);
 
         function inside(point, vs) {
             // ray-casting algorithm based on
@@ -86,20 +100,20 @@
             return ccwPoints;
         }
         var poly = [
-            [30, 30],
-            [-30, 30],
-            [-30, -30],
-            [30, -30]
+            [90, 180],
+            [-90, 180],
+            [-90, -180],
+            [90, -180]
         ];
         var cnt = 0;
-        var circles= [];
+        var circles = [];
         var marks = [];
         var df = [];
-        var poly_m = L.polygon(poly).addTo(mymap);
+        //var poly_m = L.polygon(poly).addTo(mymap);
 
         poly.forEach(f => {
-            var cir= L.circle(f, 100, {
-                color: 'red',
+            var cir = L.circle(f, 10, {
+                color: 'blue',
                 fillColor: '#f03',
                 fillOpacity: 0.5
             });
@@ -110,31 +124,29 @@
         function add_marks() {
             marks.forEach(f => {
                 mymap.removeLayer(f);
-            }
-            )
+            })
+            var data= [];
             df.forEach(f => {
                 if (inside(f, poly)) {
-                    var mark = L.marker(f).addTo(mymap);
-                    marks.push(mark);
+                    data.push(f);
                 }
-            }
-            )
+            })
+            layer.setData(data);
+            //mymap.fitBounds(layer.bounds);
         }
         function onMapClick(e) {
-            poly[cnt] = ([e.latlng.lat, e.latlng.lng]);
-            cnt = (cnt + 1) % 4;
-            for(var i=0; i<cnt; i++)
-            {
+            poly[cnt++] = ([e.latlng.lat, e.latlng.lng]);
+            for (var i = 0; i < cnt; i++)
                 circles[i].setLatLng(poly[i]);
-            }
+            cnt = cnt % 4;
             if (cnt == 0) {
-                poly= sort_poly(poly);
-                poly_m.setLatLngs(poly);
+                poly = sort_poly(poly);
+                //poly_m.setLatLngs(poly);
                 add_marks();
             }
         }
         mymap.on('click', onMapClick);
-        
+
         function onChange(event) {
             var reader = new FileReader();
             reader.onload = onReaderLoad;
@@ -143,7 +155,7 @@
 
         function onReaderLoad(event) {
             var data = JSON.parse(event.target.result);
-            df= [];
+            df = [];
             data["locations"].forEach(f => {
                 var latitudeE7 = f["latitudeE7"];
                 var longitudeE7 = f["longitudeE7"];
@@ -153,16 +165,24 @@
                     longitudeE7 = longitudeE7 - 4294967296;
                 latitudeE7 /= 1e7;
                 longitudeE7 /= 1e7;
-                //L.marker([latitudeE7, longitudeE7]).addTo(mymap)
                 df.push([latitudeE7, longitudeE7]);
             });
             add_marks();
-            // dateo = datetime.datetime.fromtimestamp(int(f["timestampMs"])/1000.0)
-            // date = dateo.strftime('%Y-%m-%d %H:%M:%S')
-            // df.append([latitudeE7, longitudeE7, int(f["timestampMs"])/1000.0])
-            // df= pd.DataFrame(df,columns=["lat","long","ts"])
         }
         document.getElementById('file').addEventListener('change', onChange);
+
+        function reset(){
+            poly = [
+                [90, 180],
+                [-90, 180],
+                [-90, -180],
+                [90, -180]
+            ];
+            for (var i = 0; i < 4; i++)
+                circles[i].setLatLng(poly[i]);
+            add_marks();
+        }
+        document.getElementById('reset').addEventListener('click', reset);
     </script>
 </body>
 
