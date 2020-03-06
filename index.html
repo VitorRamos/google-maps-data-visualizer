@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=\, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.4.0/dist/leaflet.css"
+        integrity="sha512-puBpdR0798OZvTTbP4A8Ix/l+A4dHDD0DGqYW6RQ+9jxkRFclaxxQb/SJAWZfWAkuyeQUytO7+7N4QKrDh+drA=="
+        crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js"
+        integrity="sha512-QVftwZFqvtRNi0ZyCtsznlKSWOStnDORoefr1enyq5mVL4tmKB3S/EnC3rRJcxCPavG10IcrVGSmPh6Qw5lwrg=="
+        crossorigin=""></script>
+    <style>
+        #issMap {
+            height: 760px;
+        }
+    </style>
+
+    <title>Fetch JSON from API and map lat lon</title>
+</head>
+
+<body>
+    <h1>Google maps data</h1>
+
+    <input id="file" type="file" />
+    <div id="issMap"></div>
+
+    <script>
+        // Making a map and tiles
+        // Setting a higher initial zoom to make effect more obvious
+        const mymap = L.map('issMap').setView([0, 0], 6);
+        const attribution =
+            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+
+        const tileUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+        const tiles = L.tileLayer(tileUrl, { attribution });
+        tiles.addTo(mymap);
+
+        function inside(point, vs) {
+            // ray-casting algorithm based on
+            // http://www.ecse.rpi.edu/Homepages/wrf/Research/Short_Notes/pnpoly.html
+            var x = point[0], y = point[1];
+            var inside = false;
+            for (var i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+                var xi = vs[i][0], yi = vs[i][1];
+                var xj = vs[j][0], yj = vs[j][1];
+
+                var intersect = ((yi > y) != (yj > y))
+                    && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+                if (intersect) inside = !inside;
+            }
+            return inside;
+        };
+        function sort_poly(points) {
+            points.sort((a, b) => a[1] - b[1]);
+            // Get center y
+            const cy = (points[0][1] + points[points.length - 1][1]) / 2;
+            // Sort from right to left
+            points.sort((a, b) => b[0] - a[0]);
+            // Get center x
+            const cx = (points[0][0] + points[points.length - 1][0]) / 2;
+            // Center point
+            var center = [cx, cy];
+            // Pre calculate the angles as it will be slow in the sort
+            // As the points are sorted from right to left the first point
+            // is the rightmost
+            // Starting angle used to reference other angles
+            var startAng;
+            points.forEach(point => {
+                var ang = Math.atan2(point[1] - center[1], point[0] - center[0]);
+                if (!startAng) {
+                    startAng = ang
+                } else {
+                    if (ang < startAng) { // ensure that all points are clockwise of the start point
+                        ang += Math.PI * 2;
+                    }
+                }
+                point.angle = ang; // add the angle to the point
+            });
+            // first sort clockwise
+            points.sort((a, b) => a.angle - b.angle);
+            // then reverse the order
+            const ccwPoints = points.reverse();
+
+            return ccwPoints;
+        }
+        var poly = [
+            [30, 30],
+            [-30, 30],
+            [-30, -30],
+            [30, -30]
+        ];
+        var cnt = 0;
+        var circles= [];
+        var marks = [];
+        var df = [];
+        var poly_m = L.polygon(poly).addTo(mymap);
+
+        poly.forEach(f => {
+            var cir= L.circle(f, 100, {
+                color: 'red',
+                fillColor: '#f03',
+                fillOpacity: 0.5
+            });
+            circles.push(cir);
+            cir.addTo(mymap);
+        }
+        )
+        function add_marks() {
+            marks.forEach(f => {
+                mymap.removeLayer(f);
+            }
+            )
+            df.forEach(f => {
+                if (inside(f, poly)) {
+                    var mark = L.marker(f).addTo(mymap);
+                    marks.push(mark);
+                }
+            }
+            )
+        }
+        function onMapClick(e) {
+            poly[cnt] = ([e.latlng.lat, e.latlng.lng]);
+            cnt = (cnt + 1) % 4;
+            for(var i=0; i<cnt; i++)
+            {
+                circles[i].setLatLng(poly[i]);
+            }
+            if (cnt == 0) {
+                poly= sort_poly(poly);
+                poly_m.setLatLngs(poly);
+                add_marks();
+            }
+        }
+        mymap.on('click', onMapClick);
+        
+        function onChange(event) {
+            var reader = new FileReader();
+            reader.onload = onReaderLoad;
+            reader.readAsText(event.target.files[0]);
+        }
+
+        function onReaderLoad(event) {
+            var data = JSON.parse(event.target.result);
+            df= [];
+            data["locations"].forEach(f => {
+                var latitudeE7 = f["latitudeE7"];
+                var longitudeE7 = f["longitudeE7"];
+                if (latitudeE7 > 900000000)
+                    latitudeE7 = latitudeE7 - 4294967296;
+                if (longitudeE7 > 1800000000)
+                    longitudeE7 = longitudeE7 - 4294967296;
+                latitudeE7 /= 1e7;
+                longitudeE7 /= 1e7;
+                //L.marker([latitudeE7, longitudeE7]).addTo(mymap)
+                df.push([latitudeE7, longitudeE7]);
+            });
+            add_marks();
+            // dateo = datetime.datetime.fromtimestamp(int(f["timestampMs"])/1000.0)
+            // date = dateo.strftime('%Y-%m-%d %H:%M:%S')
+            // df.append([latitudeE7, longitudeE7, int(f["timestampMs"])/1000.0])
+            // df= pd.DataFrame(df,columns=["lat","long","ts"])
+        }
+        document.getElementById('file').addEventListener('change', onChange);
+    </script>
+</body>
+
+</html>
