@@ -30,8 +30,9 @@ Google maps data format
     "latitudeE7" : 533455708,
     "longitudeE7" : -62638089,
     ...
-  }
+  },
   ...
+  ]
 }
 ```
 
