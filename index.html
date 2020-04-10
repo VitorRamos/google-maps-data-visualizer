@@ -149,7 +149,7 @@
 
         function onReaderLoad(event) {
             var data = JSON.parse(event.target.result);
-            var df = [];
+            df = [];
             data["locations"].forEach(f => {
                 var latitudeE7 = f["latitudeE7"];
                 var longitudeE7 = f["longitudeE7"];
