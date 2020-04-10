@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=\, initial-scale=1.0" />
+    <meta name="viewport", initial-scale=1.0" />
     <meta http-equiv="X-UA-Compatible" content="ie=edge" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.4.0/dist/leaflet.css"
         integrity="sha512-puBpdR0798OZvTTbP4A8Ix/l+A4dHDD0DGqYW6RQ+9jxkRFclaxxQb/SJAWZfWAkuyeQUytO7+7N4QKrDh+drA=="
@@ -45,7 +45,7 @@
             //opacity: 0.5,
             radius: 50,
             useAbsoluteRadius: true,
-            color: '#A00',
+            color: '#089',
             noMask: true,  // true results in normal (filled) circled, instead masked circles
             //lineColor: '#A00'   // color of the circle outline if noMask is true
         });
@@ -119,11 +119,20 @@
             cir.addTo(mymap);
         }
         )
+        function too_close(df, p){
+            for (var i = 0; i<df.length; i++)
+            {
+                if( (df[i][0]-p[0])**2+(df[i][1]-p[1])**2 < 1e-7 )
+                    return true;
+            }
+            return false;
+        }
         function add_marks() {
             var data= [];
             df.forEach(f => {
                 if (inside(f, poly)) {
-                    data.push(f);
+                    if(!too_close(data, f))
+                        data.push(f);
                 }
             })
             layer.setData(data);
